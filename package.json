@@ -1,0 +1,19 @@
+{
+  "name": "async-microstates",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "funcadelic": "0.4.2",
+    "microstates": "0.7.0",
+    "react": "^16.3.2",
+    "react-dom": "^16.3.2",
+    "react-scripts": "1.1.4",
+    "rxjs": "6.1.0"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test --env=jsdom",
+    "eject": "react-scripts eject"
+  }
+}
