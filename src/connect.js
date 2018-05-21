@@ -4,6 +4,8 @@ export default function connect(store) {
   return function WrappedComponent(OriginalComponent, setup = store => store) {
     class Connected extends Component {
 
+      static displayName = OriginalComponent.name
+
       state = {
         store: undefined
       }

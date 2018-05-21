@@ -4,6 +4,7 @@ import "./App.css";
 import connect from "./connect";
 import logo from "./logo.svg";
 import store from "./store";
+import Counter from './Counter';
 
 class AppState {
   name = String;
@@ -26,6 +27,7 @@ function App({ store }) {
       <p className="App-intro">
         To get started, edit <code>src/App.js</code> and save to reload.
       </p>
+      <Counter />
     </div>
   );
 }

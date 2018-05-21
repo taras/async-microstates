@@ -1,6 +1,6 @@
 import { from, map } from 'microstates';
 import { from as observableFrom } from 'rxjs';
-import { share } from 'rxjs/operators';
+// import { share } from 'rxjs/operators';
 
 function createStore(initial) {
   let last;
@@ -24,7 +24,7 @@ function createStore(initial) {
     }
   }), initial);
 
-  return last = observableFrom(last).pipe(share());
+  return last = observableFrom(last);
 }
 
 export default createStore(from({}));
