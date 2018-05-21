@@ -3,7 +3,6 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
-    "funcadelic": "0.4.2",
     "microstates": "0.7.0",
     "react": "^16.3.2",
     "react-dom": "^16.3.2",
