@@ -1,23 +1,33 @@
-import { from, map } from 'microstates';
+import { from, map, reveal } from 'microstates';
 import { from as observableFrom } from 'rxjs';
-// import { share } from 'rxjs/operators';
+import view from 'ramda/src/view';
+import set from 'ramda/src/set';
+import lensPath from 'ramda/src/lensPath';
 
 function createStore(initial) {
   let last;
 
   last = map(tree => tree.use(next => {
-    return (microstate, transition, args) => {
-  
+    return (microstate, transition, args) => {  
+
       function wrapped(...args) {
-        // transition context is a microstate, 
-        // it contains the path where the transition was invoked
-        // when handling async operation, we want the result to 
-        // be set into that path 
-        let context = this;
-        let result = transition.apply(context, args);
-        console.log('wrapped', transition.name);
-        console.log('result=', result);
-        return result;
+        let tree = reveal(microstate);
+        let result = transition.apply(this, args);
+
+        if (typeof result === 'function') {
+          function constructor() {
+            return view(tree.lens, reveal(last)).microstate;
+          }
+
+          let thunk = result(constructor)
+            .then(next => view(lensPath(tree.path), last).set(next))
+            .catch(next => view(lensPath(tree.path), last).set(next))
+
+          // this should return some indicator that the task is running
+          return tree.prune().microstate;
+        } else {
+          return result;
+        }
       }
 
       return last = next(microstate, wrapped, args);
