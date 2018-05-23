@@ -25,6 +25,13 @@ class CounterState {
       return await now().increment();
     }
   }
+
+  willReject() {
+    return async function() {
+      await timeout(1000);
+      return await Promise.reject('Something terrible happened');
+    }
+  }
 }
 
 function Counter({ store }) {
@@ -34,9 +41,12 @@ function Counter({ store }) {
       <button onClick={() => store.counter.increment()}>++1</button>
       <button onClick={() => store.counter.decrement()}>--1</button>
       <button onClick={() => store.counter.giveItASecond()}>Increment via space 🚀</button>
+      <button onClick={() => store.counter.willReject()}>Cause an error</button>
       <ul>
         <li>Clicks: {store.state.counter.clicks}</li>
         <li>Count: {store.state.counter.count}</li>
+        <li>{store.counter.giveItASecond.isRunning ? 'Loading...' : null}</li>
+        <li>{store.counter.willReject.hasError ? `Error: ${store.counter.willReject.error}` : null}</li>
       </ul>
     </div>
   )
