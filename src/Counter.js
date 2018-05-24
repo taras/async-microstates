@@ -26,10 +26,14 @@ class CounterState {
     }
   }
 
-  willReject() {
-    return async function() {
+  errorIfRunning() {
+    return async function(now) {
       await timeout(1000);
-      return await Promise.reject('Something terrible happened');
+      if (now().giveItASecond.isRunning) {
+        return await Promise.reject('Give it a second!!!');
+      } else {
+        return await Promise.resolve()
+      }
     }
   }
 }
@@ -40,13 +44,13 @@ function Counter({ store }) {
       <h3>Counter</h3>
       <button onClick={() => store.counter.increment()}>++1</button>
       <button onClick={() => store.counter.decrement()}>--1</button>
-      <button onClick={() => store.counter.giveItASecond()} disabled={store.counter.giveItASecond.isRunning}>Increment via space 🚀</button>
-      <button onClick={() => store.counter.willReject()}>Cause an error</button>
+      <button onClick={() => store.counter.giveItASecond()} disabled={store.counter.giveItASecond.isRunning}>Increment via space <span role="img" aria-label="rocket">🚀</span></button>
+      <button onClick={() => store.counter.errorIfRunning()}>Will error if clicked while running</button>
       <ul>
         <li>Clicks: {store.state.counter.clicks}</li>
         <li>Count: {store.state.counter.count}</li>
         <li>{store.counter.giveItASecond.isRunning ? 'Loading...' : null}</li>
-        <li>{store.counter.willReject.hasError ? `Error: ${store.counter.willReject.error}` : null}</li>
+        <li>{store.counter.errorIfRunning.hasError ? `Error: ${store.counter.errorIfRunning.error}` : null}</li>
       </ul>
     </div>
   )
