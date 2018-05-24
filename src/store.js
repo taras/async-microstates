@@ -141,7 +141,7 @@ function asyncMiddleware(getCurrent) {
 
 function createStore(initial) {
   
-  let last = map(tree => tree.use(asyncMiddleware(_ => last)), initial);
+  let last = map(tree => tree.use(asyncMiddleware(() => last)), initial);
 
   let multi = observableFrom(last)
     .pipe(

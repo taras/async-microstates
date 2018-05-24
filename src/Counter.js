@@ -31,8 +31,6 @@ class CounterState {
       await timeout(1000);
       if (now().giveItASecond.isRunning) {
         return await Promise.reject('Give it a second!!!');
-      } else {
-        return await Promise.resolve()
       }
     }
   }
