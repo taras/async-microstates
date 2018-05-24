@@ -40,7 +40,7 @@ function Counter({ store }) {
       <h3>Counter</h3>
       <button onClick={() => store.counter.increment()}>++1</button>
       <button onClick={() => store.counter.decrement()}>--1</button>
-      <button onClick={() => store.counter.giveItASecond()}>Increment via space 🚀</button>
+      <button onClick={() => store.counter.giveItASecond()} disabled={store.counter.giveItASecond.isRunning}>Increment via space 🚀</button>
       <button onClick={() => store.counter.willReject()}>Cause an error</button>
       <ul>
         <li>Clicks: {store.state.counter.clicks}</li>
