@@ -4,7 +4,6 @@
   "private": true,
   "dependencies": {
     "funcadelic": "0.4.3",
-    "microstates": "0.7.0",
     "ramda": "0.25.0",
     "react": "^16.3.2",
     "react-dom": "^16.3.2",
