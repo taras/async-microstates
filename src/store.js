@@ -1,9 +1,11 @@
 import Microstate, { from, map, reveal, create, types } from "microstates";
 import { from as observableFrom, ReplaySubject } from "rxjs";
-import { multicast, tap } from "rxjs/operators";
+import { multicast } from "rxjs/operators";
 import view from "ramda/src/view";
+import compose from "ramda/src/compose";
 import lensPath from "ramda/src/lensPath";
 import { append, map as fMap } from "funcadelic";
+
 class Async {
   status = types.Any;
   error = types.Any;
@@ -104,17 +106,19 @@ function start(tree, transition) {
   return withAsync.assign({ data: { async } }).prune();
 }
 
-function asyncMiddleware(getCurrent) {
-  return next => (microstate, transition, args) => {
-    
+function asyncMiddleware(next) {
+  let last;
+
+  return (microstate, transition, args) => {
+  
     function wrapped(...args) {
       let result = transition.apply(this, args);
       
       if (typeof result === "function") {
         let tree = reveal(microstate);
-
-        let local = () => view(tree.lens, reveal(getCurrent())).microstate;
-
+  
+        let local = () => view(tree.lens, reveal(last)).microstate;
+  
         let finish = (microstate, error) => {
           let nextTree = reveal(microstate);
           let updated = nextTree.assign({
@@ -122,36 +126,47 @@ function asyncMiddleware(getCurrent) {
               async: nextTree.data.async[transition.name].finish(error)
             }
           });
-          view(lensPath(tree.path), getCurrent()).set(updated.microstate)
+          view(lensPath(tree.path), last).set(updated.microstate)
         }
-
+  
         result(local)
           .then(result => finish(result instanceof Microstate ? result : local()))
           .catch(error => finish(local(), error));
-
+  
         return start(tree, transition).microstate;
       }
-
+  
       return result;      
     }
-
-    return next(microstate, wrapped, args);
+  
+    return last = next(microstate, wrapped, args);
   };
 }
 
-function createStore(initial) {
-  
-  let last = map(tree => tree.use(asyncMiddleware(() => last)), initial);
+function logger(next) {
+  return (microstate, transition, args) => {
+    console.log(`${reveal(microstate).path.concat(transition.name).join('.')}(${args})`);
+    return next(microstate, transition, args);
+  };
+}
 
-  let multi = observableFrom(last)
+function createStore(microstate) {
+
+  let multicasting = observableFrom(microstate)
     .pipe(
-      tap(_last => (last = _last)),
       multicast(() => new ReplaySubject(1))
     );
 
-    multi.connect();
+    multicasting.connect();
 
-  return multi;
+  return multicasting;
 }
 
-export default createStore(from({}));
+// 1. create an empty microstate
+let initial = from({});
+
+// 2. add the async & logger middleware 
+let async = map(tree => tree.use(compose(logger, asyncMiddleware)), initial);
+
+// 3. create an observable that allows multiple subscribers to receive state changes
+export default createStore(async);
