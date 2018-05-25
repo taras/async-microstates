@@ -150,6 +150,45 @@ function logger(next) {
   };
 }
 
+function handleMonitorActions(remoteDev, microstate) {
+
+}
+
+function connectReduxDevTools(remoteDev) {
+  let connected;
+  
+  return next => {
+    let last;
+
+    return (microstate, transition, args) => {
+      let { root, path } = reveal(microstate);
+
+      if (!connected) {
+
+        connected = remoteDev.connectViaExtension({ name: root.Type.constructor.name });
+
+        connected.subscribe(message => {
+          if (message.type === "DISPATCH") {
+            handleMonitorActions(connected, last)
+          }
+        });
+
+        connected.init(root.valueOf());
+      }
+
+      last = next(microstate, transition, args);
+
+      let message = Object.assign({
+        type: [...path, transition.name].join('.')
+      }, args);
+
+      connected.send(message, last.valueOf());
+
+      return last;
+    }
+  }
+}
+
 function createStore(microstate) {
 
   let multicasting = observableFrom(microstate)
@@ -165,8 +204,10 @@ function createStore(microstate) {
 // 1. create an empty microstate
 let initial = from({});
 
+let middlewares = compose(connectReduxDevTools(require("remotedev")), logger, asyncMiddleware);
+
 // 2. add the async & logger middleware 
-let async = map(tree => tree.use(compose(logger, asyncMiddleware)), initial);
+let async = map(tree => tree.use(middlewares), initial);
 
 // 3. create an observable that allows multiple subscribers to receive state changes
 export default createStore(async);
