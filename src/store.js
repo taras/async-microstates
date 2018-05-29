@@ -211,24 +211,28 @@ function connectReduxDevTools(remoteDev) {
  
   function handleMonitorActions(message) {
     switch (message.payload.type) {
-      case "RESET":
-        return connected.init(serialize(reveal(initial)))
-      // case "COMMIT":
-      //   return connected.init(serialize(reveal(microstate)))
-      // case "ROLLBACK": {
-      //   let serialized = remoteDev.extractState(message);
-      //   return microstate.set(deserialize().microstate)
-      // }
+      case "RESET": {
+        let serialized = serialize(reveal(initial));
+        replaceWith(serialized);
+        return connected.init(serialized);
+      }
+      case "COMMIT": {
+        let serialized = serialize(reveal(last));
+        return connected.init(serialized);
+      }
+      case "ROLLBACK": {
+        let serialized = remoteDev.extractState(message);
+        return connected.init(serialized);
+      }
       case "JUMP_TO_STATE":
       case "JUMP_TO_ACTION":
         replaceWith(remoteDev.extractState(message));
         return;
       // case "IMPORT_STATE":
-      //   const nextLiftedState = message.payload.nextLiftedState;
-      //   const computedStates = nextLiftedState.computedStates;
-      //   microstate.set(computedStates[computedStates.length - 1].state)
-      //   connected.send(null, nextLiftedState)
-      //   return
+      //   const nextLiftedState = message.payload.nextLiftedState
+      //   const computedStates = nextLiftedState.computedStates
+      //   replaceWith(computedStates[computedStates.length - 1].state);
+      //   return connected.send(null, nextLiftedState)
       default:
     }
   }
