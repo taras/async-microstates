@@ -1,10 +1,14 @@
-import Microstate, { from, map, reveal, create, types } from "microstates";
+import Microstate, { from, reveal, create, types, Tree } from "microstates";
 import { from as observableFrom, ReplaySubject } from "rxjs";
 import { multicast } from "rxjs/operators";
 import view from "ramda/src/view";
 import compose from "ramda/src/compose";
 import lensPath from "ramda/src/lensPath";
-import { append, map as fMap } from "funcadelic";
+import { append, map } from "funcadelic";
+
+let monadSymbol = Object.getOwnPropertySymbols(Tree.prototype)
+    .find(symbol => symbol.toString() === 'Symbol(Monad)');
+let { flatMap } = Tree.prototype[monadSymbol];
 
 class Async {
   status = types.Any;
@@ -38,7 +42,7 @@ function makeAsyncClass(TransitionsClass) {
 
       let wrapped = append(
         this,
-        fMap((transitionState, transitionName) => {
+        map((transitionState, transitionName) => {
           return Object.defineProperties(this[transitionName].bind(wrapped), {
             isRunning: {
               configurable: true,
@@ -150,39 +154,122 @@ function logger(next) {
   };
 }
 
-function handleMonitorActions(remoteDev, microstate) {
+function serialize(tree) {
+  if (tree.hasChildren) {
+    return {
+      Type: tree.meta.InitialType.name,
+      children: map(serialize, tree.children)
+    }
+  } else {
+    return {
+      Type: tree.meta.InitialType.name,
+      value: tree.value
+    }
+  }
+}
 
+const defaultResolve = Type => {
+  throw new Error(`You must provide a resolve function to convert  type ${Type} string to constructor.`)
+}
+
+function deserialize(serializable, resolve = defaultResolve ) {
+  function from(props) {
+    let { value, Type, children } = props;
+    let root = Type ? new Tree({ Type: resolve(Type), value }) : Tree.from(value);
+    
+    if (children) {
+      return flatMap(tree => {
+        if (tree.is(root)) {
+          return tree.assign({
+            meta: {
+              children() {
+                return map((child, key) => from(child).graft([key]), children);
+              }
+            },
+            data: {
+              value(instance) {
+                return map(child => child.value, instance.children);
+              }
+            }
+          });
+        }
+        return tree;
+      }, root);
+    }
+    
+    return root;
+  }
+  
+  return from(serializable);
 }
 
 function connectReduxDevTools(remoteDev) {
   let connected;
-  
-  return next => {
-    let last;
+  let initial;
+  let last;
+  let replacing = false;
+ 
+  function handleMonitorActions(message) {
+    switch (message.payload.type) {
+      case "RESET":
+        return connected.init(serialize(reveal(initial)))
+      // case "COMMIT":
+      //   return connected.init(serialize(reveal(microstate)))
+      // case "ROLLBACK": {
+      //   let serialized = remoteDev.extractState(message);
+      //   return microstate.set(deserialize().microstate)
+      // }
+      case "JUMP_TO_STATE":
+      case "JUMP_TO_ACTION":
+        replaceWith(remoteDev.extractState(message));
+        return;
+      // case "IMPORT_STATE":
+      //   const nextLiftedState = message.payload.nextLiftedState;
+      //   const computedStates = nextLiftedState.computedStates;
+      //   microstate.set(computedStates[computedStates.length - 1].state)
+      //   connected.send(null, nextLiftedState)
+      //   return
+      default:
+    }
+  }
 
+  function replaceWith(incoming) {
+    replacing = true;
+    let { types } = reveal(last);
+    let tree = deserialize(incoming, Type => types[Type]);
+    last.set(tree.microstate);
+    replacing = false;
+  }
+
+  return next => {
+    
     return (microstate, transition, args) => {
       let { root, path } = reveal(microstate);
 
       if (!connected) {
+        initial = root.microstate;
 
-        connected = remoteDev.connectViaExtension({ name: root.Type.constructor.name });
+        connected = remoteDev.connectViaExtension({ name: root.meta.InitialType.constructor.name });
 
         connected.subscribe(message => {
           if (message.type === "DISPATCH") {
-            handleMonitorActions(connected, last)
+            handleMonitorActions(message)
           }
         });
 
-        connected.init(root.valueOf());
+        connected.init(serialize(root));
       }
 
       last = next(microstate, transition, args);
 
-      let message = Object.assign({
-        type: [...path, transition.name].join('.')
-      }, args);
+      let message = {
+        type: [...path, transition.name].join('.'),
+        args
+      };
 
-      connected.send(message, last.valueOf());
+      if (!replacing) {
+        connected.send(message, serialize(reveal(last)));
+      }
 
       return last;
     }
@@ -207,7 +294,7 @@ let initial = from({});
 let middlewares = compose(connectReduxDevTools(require("remotedev")), logger, asyncMiddleware);
 
 // 2. add the async & logger middleware 
-let async = map(tree => tree.use(middlewares), initial);
+let async = Microstate.map(tree => tree.use(middlewares), initial);
 
 // 3. create an observable that allows multiple subscribers to receive state changes
 export default createStore(async);

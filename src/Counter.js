@@ -36,7 +36,10 @@ class CounterState {
   }
 }
 
+let counter = create(CounterState, {});
+
 function Counter({ store }) {
+  if (!store.counter) return;
   return (
     <div>
       <h3>Counter</h3>
@@ -54,4 +57,4 @@ function Counter({ store }) {
   )
 }
 
-export default connect(store)(Counter, store => store.put('counter', create(CounterState, {})));
+export default connect(store)(Counter, store => store.counter ? store : store.put('counter', counter));

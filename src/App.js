@@ -32,4 +32,4 @@ function App({ store }) {
   );
 }
 
-export default connect(store)(App, store => store.put("app", app));
+export default connect(store)(App, store => store.app ? store : store.put("app", app));

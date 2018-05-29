@@ -14,12 +14,7 @@ export default function connect(store) {
   
       componentWillMount() {
         this.subscription = store.subscribe(store => {
-          if (this._isSetup) {
-            this.setState({ store });
-          } else {
-            this._isSetup = true;
-            setup(store);
-          }
+          this.setState({ store: setup(store) });
         });
       }
     
@@ -28,11 +23,7 @@ export default function connect(store) {
       }
     
       render() {
-        if (this._isSetup) {
-          return <OriginalComponent {...this.props} store={this.state.store}/>;
-        } else {
-          return null;
-        }
+        return <OriginalComponent {...this.props} store={this.state.store}/>;
       }
     }
   
